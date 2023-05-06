@@ -1,0 +1,126 @@
+#!/bin/bash
+
+COMMON_CURL_OPTION="--silent"
+
+##
+## util
+##
+
+function error() {
+    echo $1 1>&2
+    exit 1
+}
+
+function usage() {
+    cat << EOF
+    vultr vultr api client
+
+    SubCmd
+        account
+        application
+        instance
+EOF
+}
+
+##
+## application
+##
+function application() {
+    curl "https://api.vultr.com/v2/applications" \
+      -X GET \
+      -H "Authorization: Bearer ${VULTR_API_KEY}" \
+      "$COMMON_CURL_OPTION"
+}
+
+##
+## account
+##
+function account() {
+    curl "https://api.vultr.com/v2/account"\
+        -X GET \
+        -H "Authorization: Bearer ${VULTR_API_KEY}" \
+        "$COMMON_CURL_OPTION"
+}
+
+##
+## instance
+##
+#
+function instance_usage() {
+    cat << EOF
+    SubCmd
+        list
+        start
+EOF
+}
+
+function instance() {
+    subcmd="${1:-nothing}"
+    case "$subcmd" in
+        "list" )
+            instance_list "${@:2:($#)}"
+            exit 0 ;;
+        "get" )
+            instance_get "${@:2:($#)}"
+            exit 0 ;;
+        "start" )
+            instance_start "${@:2:($#)}"
+            exit 0 ;;
+        "help" )
+            instance_usage
+            exit 0 ;;
+        * )
+            error "not found: $subcmd" ;;
+    esac
+}
+
+function instance_list() {
+    curl "https://api.vultr.com/v2/instances" \
+        -X GET \
+        -H "Authorization: Bearer ${VULTR_API_KEY}" \
+        "$COMMON_CURL_OPTION"
+}
+
+function instance_get() {
+    curl "https://api.vultr.com/v2/instances/$1" \
+        -X GET \
+        -H "Authorization: Bearer ${VULTR_API_KEY}"\
+        "$COMMON_CURL_OPTION"
+}
+
+function instance_start() {
+    body <<EOF
+    { "instance_ids" : [ "$1" ] }
+EOF
+
+    curl "https://api.vultr.com/v2/instances/start" \
+        -X POST \
+        -H "Authorization: Bearer ${VULTR_API_KEY}" \
+        -H "Content-Type: application/json" \
+        --data $body \
+        "$COMMON_CURL_OPTION"
+}
+
+function main(){
+    test -n "$VULTR_API_KEY" || error "need to set environment value: VULTR_API_KEY"
+    subcmd="${1:-nothing}"
+    case "$subcmd" in
+        "application" )
+            application "${@:2:($#)}"
+            exit 0 ;;
+        "account" )
+            account "${@:2:($#)}"
+            exit 0 ;;
+        "instance" )
+            instance "${@:2:($#)}"
+            exit 0 ;;
+        "help" )
+            usage
+            exit 0 ;;
+        * )
+            error "not found: $subcmd"
+            ;;
+    esac
+}
+
+main "${@}"
